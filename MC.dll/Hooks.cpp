@@ -9,8 +9,12 @@
 #include <Psapi.h>
 #include <WinTrust.h>
 #include <vector>
+#include <detours.h>
+
 
 #pragma comment(lib, "WinTrust.lib")
+#pragma comment(lib, "detours.lib")
+
 
 #pragma warning(disable:4996)
 
@@ -36,6 +40,9 @@ bool WINAPI DetourShellExecuteExW(SHELLEXECUTEINFOW *pExecInfo) //Detoured to op
 
 	CStringA command_line;
 	command_line.Format("cmd.exe /c start \"link\" \"%s\"", str.c_str());
+
+	// Haven't reversed Osu yet , will do soon tho .
+	//
 
 	if (!CreateProcessA(NULL,  command_line.GetBuffer(),NULL, NULL,FALSE,NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW,NULL,NULL,&si,&pi))
 	{
@@ -75,13 +82,48 @@ LSTATUS WINAPI DetourRegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lp
 	return oRegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
 }
 
+typedef int(WINAPI* _UuidCreate)(UUID*);
+
+_UuidCreate originalUuidCreate = NULL;
 
 void InstallHooks()
 {
-	MH_Initialize();
-	MH_CreateHook(&UuidCreate, &DetourUuidCreate, reinterpret_cast<LPVOID*>(&oUuidCreate));
-	MH_CreateHook(&GetAdaptersAddresses, &DetourGetAdaptersAddresses, reinterpret_cast<LPVOID*>(&oGetAdaptersAddresses));
-	MH_CreateHook(&RegQueryValueExW, &DetourRegQueryValueExW, reinterpret_cast<LPVOID*>(&oRegQueryValueExW));
-	MH_CreateHook(&ShellExecuteExW, &DetourShellExecuteExW, reinterpret_cast<LPVOID*>(&oShellExecuteExW));
-	MH_EnableHook(MH_ALL_HOOKS);
+	
+	/*
+	 *	THIS GUY USED minhook or w/e that library was  , but i will be overriding his code 
+	 *	Using Detours .
+ 	 *
+	 * Old code :
+
+		MH_Initialize();
+		MH_CreateHook(&UuidCreate, &DetourUuidCreate, reinterpret_cast<LPVOID*>(&oUuidCreate));
+		MH_CreateHook(&GetAdaptersAddresses, &DetourGetAdaptersAddresses, reinterpret_cast<LPVOID*>(&oGetAdaptersAddresses));
+		MH_CreateHook(&RegQueryValueExW, &DetourRegQueryValueExW, reinterpret_cast<LPVOID*>(&oRegQueryValueExW));
+		MH_CreateHook(&ShellExecuteExW, &DetourShellExecuteExW, reinterpret_cast<LPVOID*>(&oShellExecuteExW));
+		MH_EnableHook(MH_ALL_HOOKS);
+	 *
+	 */
+
+	
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+
+	// Here we will Hook the winapi functions mentioned above .
+	// this is an old version of Detours , I will update soon .
+
+	DetourTransactionCommit();
+
+
+}
+
+
+void UninstallHooks()
+{
+	// clear stuff
+}
+
+
+void WINAPI ConsoleDispose()
+{
+	// not rrly needed .
 }
